@@ -10,6 +10,9 @@ const LABEL_WIDTH = 150; // px, левая колонка с именем объ
 const ROW_HEIGHT = 34; // px (стало просторнее)
 const RULER_HEIGHT = 28; // px
 const TRANSPORT_HEIGHT = 50; // px
+/** Сколько строк объектов видно без скролла; дальше — внутренний скролл, чтобы не съедать поле. */
+const MAX_VISIBLE_ROWS = 6;
+const TRACKS_MAX_HEIGHT = ROW_HEIGHT * MAX_VISIBLE_ROWS; // px
 
 const tBtn: React.CSSProperties = {
   width: 34,
@@ -156,7 +159,6 @@ export default function Timeline() {
 
   return (
     <div
-      ref={trackRef}
       style={{
         width: "100%",
         background: "var(--panel)",
@@ -279,15 +281,103 @@ export default function Timeline() {
         </div>
       </div>
 
-      {/* Дорожки объектов */}
-      <div
-        style={{
-          position: "relative",
-          backgroundImage: `repeating-linear-gradient(90deg, var(--border-soft) 0, var(--border-soft) 1px, transparent 1px, transparent ${secToX(step)}px)`,
-          backgroundPosition: `${LABEL_WIDTH}px 0`,
-        }}
-      >
-        {/* Плейхед (тянется за кружок) */}
+      {/* Дорожки объектов — список скроллится, чтобы рост числа объектов не съедал поле */}
+      <div style={{ position: "relative", maxHeight: TRACKS_MAX_HEIGHT }}>
+        <div
+          ref={trackRef}
+          style={{
+            position: "relative",
+            maxHeight: TRACKS_MAX_HEIGHT,
+            overflowY: "auto",
+            scrollbarGutter: "stable",
+            backgroundImage: `repeating-linear-gradient(90deg, var(--border-soft) 0, var(--border-soft) 1px, transparent 1px, transparent ${secToX(step)}px)`,
+            backgroundPosition: `${LABEL_WIDTH}px 0`,
+          }}
+        >
+          {objects.map((obj) => {
+            const selected = selectedIds.includes(obj.id);
+            // Мяч: подпись текущего владельца + события-передачи вместо ключей позиции.
+            const isBallRow = obj.kind === "ball" && ball?.id === obj.id;
+            const label = isBallRow
+              ? ballCarrierNow
+                ? `Мяч → #${ballCarrierNow.number}`
+                : "Мяч (свободен)"
+              : objectLabel(obj);
+            return (
+              <div
+                key={obj.id}
+                style={{
+                  display: "flex",
+                  height: ROW_HEIGHT,
+                  borderBottom: "1px solid var(--border-soft)",
+                  background: selected ? "rgba(47,209,122,0.08)" : "transparent",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => select(obj.id, e.shiftKey)}
+                  style={{
+                    width: LABEL_WIDTH,
+                    borderRight: "1px solid var(--border)",
+                    padding: "0 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: 12,
+                    fontWeight: selected ? 600 : 400,
+                    background: "transparent",
+                    border: "none",
+                    color: selected ? "var(--text)" : "var(--text-dim)",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {label}
+                </button>
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: дорожка — клик=выделение+перемотка, дабл-клик=ключ */}
+                <div
+                  style={{ position: "relative", flex: 1, cursor: "pointer" }}
+                  onMouseDown={(e) => {
+                    select(obj.id, e.shiftKey);
+                    setCurrentTime(snapT(tFromClientX(e.clientX)));
+                  }}
+                  onDoubleClick={(e) => handleTrackDoubleClick(e, obj)}
+                >
+                  {isBallRow && ball?.passes
+                    ? ball.passes.map((p) => (
+                        <PassMarker
+                          key={`pass-${p.time}`}
+                          left={secToX(p.time)}
+                          free={p.carrierId == null}
+                          onMouseDown={(e) => {
+                            startPassDrag(e, p.time);
+                            setCurrentTime(p.time);
+                          }}
+                          onDelete={() => removeBallPass(p.time)}
+                        />
+                      ))
+                    : obj.track.map((kf) => (
+                        <Marker
+                          key={kf.time}
+                          left={secToX(kf.time)}
+                          selected={selected}
+                          onMouseDown={(e) => {
+                            startMarkerDrag(e, obj.id, kf.time);
+                            setCurrentTime(kf.time);
+                          }}
+                          onDelete={() => removeKeyframe(obj.id, kf.time)}
+                          canDelete
+                        />
+                      ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Плейхед (оверлей поверх скролл-области — не уезжает при вертикальном скролле) */}
         <div
           style={{
             position: "absolute",
@@ -318,88 +408,6 @@ export default function Timeline() {
             title="Перетащите — перемотка"
           />
         </div>
-
-        {objects.map((obj) => {
-          const selected = selectedIds.includes(obj.id);
-          // Мяч: подпись текущего владельца + события-передачи вместо ключей позиции.
-          const isBallRow = obj.kind === "ball" && ball?.id === obj.id;
-          const label = isBallRow
-            ? ballCarrierNow
-              ? `Мяч → #${ballCarrierNow.number}`
-              : "Мяч (свободен)"
-            : objectLabel(obj);
-          return (
-            <div
-              key={obj.id}
-              style={{
-                display: "flex",
-                height: ROW_HEIGHT,
-                borderBottom: "1px solid var(--border-soft)",
-                background: selected ? "rgba(47,209,122,0.08)" : "transparent",
-              }}
-            >
-              <button
-                type="button"
-                onClick={(e) => select(obj.id, e.shiftKey)}
-                style={{
-                  width: LABEL_WIDTH,
-                  borderRight: "1px solid var(--border)",
-                  padding: "0 10px",
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: 12,
-                  fontWeight: selected ? 600 : 400,
-                  background: "transparent",
-                  border: "none",
-                  color: selected ? "var(--text)" : "var(--text-dim)",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {label}
-              </button>
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: дорожка — клик=выделение+перемотка, дабл-клик=ключ */}
-              <div
-                style={{ position: "relative", flex: 1, cursor: "pointer" }}
-                onMouseDown={(e) => {
-                  select(obj.id, e.shiftKey);
-                  setCurrentTime(snapT(tFromClientX(e.clientX)));
-                }}
-                onDoubleClick={(e) => handleTrackDoubleClick(e, obj)}
-              >
-                {isBallRow && ball?.passes
-                  ? ball.passes.map((p) => (
-                      <PassMarker
-                        key={`pass-${p.time}`}
-                        left={secToX(p.time)}
-                        free={p.carrierId == null}
-                        onMouseDown={(e) => {
-                          startPassDrag(e, p.time);
-                          setCurrentTime(p.time);
-                        }}
-                        onDelete={() => removeBallPass(p.time)}
-                      />
-                    ))
-                  : obj.track.map((kf) => (
-                      <Marker
-                        key={kf.time}
-                        left={secToX(kf.time)}
-                        selected={selected}
-                        onMouseDown={(e) => {
-                          startMarkerDrag(e, obj.id, kf.time);
-                          setCurrentTime(kf.time);
-                        }}
-                        onDelete={() => removeKeyframe(obj.id, kf.time)}
-                        canDelete
-                      />
-                    ))}
-              </div>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
