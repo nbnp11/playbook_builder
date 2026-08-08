@@ -7,11 +7,11 @@ import { interpolate } from "./interpolator";
 import { usePlayback } from "./usePlayback";
 
 const LABEL_WIDTH = 150; // px, левая колонка с именем объекта
-const ROW_HEIGHT = 34; // px (стало просторнее)
+const ROW_HEIGHT = 30; // px
 const RULER_HEIGHT = 28; // px
 const TRANSPORT_HEIGHT = 50; // px
 /** Сколько строк объектов видно без скролла; дальше — внутренний скролл, чтобы не съедать поле. */
-const MAX_VISIBLE_ROWS = 6;
+const MAX_VISIBLE_ROWS = 5;
 const TRACKS_MAX_HEIGHT = ROW_HEIGHT * MAX_VISIBLE_ROWS; // px
 
 const tBtn: React.CSSProperties = {
