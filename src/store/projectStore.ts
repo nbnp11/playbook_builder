@@ -59,7 +59,7 @@ export function createPlayer(
     number: n,
     team,
     color: team === "blue" ? "#1e88e5" : "#e53935",
-    radius: 12,
+    radius: 11,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
