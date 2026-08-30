@@ -4,6 +4,7 @@ import { useProjectStore } from "../store/projectStore";
 /**
  * Проигрывание через requestAnimationFrame. Читает актуальный currentTime через getState(),
  * чтобы не перезапускать цикл каждый кадр (currentTime не в зависимостях эффекта).
+ * Скорость — множитель к реальному времени (settings.playbackSpeed), 1 = реальное время.
  * Loop: по достижении duration — возврат на 0.
  */
 export function usePlayback() {
@@ -11,6 +12,7 @@ export function usePlayback() {
   const setPlaying = useProjectStore((s) => s.setPlaying);
   const setCurrentTime = useProjectStore((s) => s.setCurrentTime);
   const duration = useProjectStore((s) => s.settings.durationSec);
+  const speed = useProjectStore((s) => s.settings.playbackSpeed ?? 1);
   const raf = useRef<number | null>(null);
   const last = useRef<number | null>(null);
 
@@ -23,7 +25,7 @@ export function usePlayback() {
     }
     const tick = (ts: number) => {
       if (last.current == null) last.current = ts;
-      const dt = (ts - last.current) / 1000;
+      const dt = ((ts - last.current) / 1000) * speed;
       last.current = ts;
       let next = useProjectStore.getState().currentTime + dt;
       if (next >= duration) next = 0; // loop
@@ -35,7 +37,7 @@ export function usePlayback() {
       if (raf.current) cancelAnimationFrame(raf.current);
       raf.current = null;
     };
-  }, [isPlaying, duration, setCurrentTime]);
+  }, [isPlaying, duration, speed, setCurrentTime]);
 
   return { isPlaying, toggle: () => setPlaying(!useProjectStore.getState().isPlaying) };
 }

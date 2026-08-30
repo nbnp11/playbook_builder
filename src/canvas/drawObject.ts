@@ -140,7 +140,9 @@ export function drawObjectInto(
       break;
     }
     case "text": {
-      // грубая оценка ширины для центрирования
+      // грубая оценка ширины для центрирования.
+      // listening не выключаем: текст — единственный шейп группы, без него объект
+      // не ловил бы события мыши (нельзя выделить/перетащить).
       const approxWidth = Math.max(obj.fontSize * obj.text.length * 0.6, obj.fontSize);
       group.add(
         new Konva.Text({
@@ -154,7 +156,6 @@ export function drawObjectInto(
           height: obj.fontSize * 1.3,
           x: -approxWidth / 2,
           y: (-obj.fontSize * 1.3) / 2,
-          listening: false,
         }),
       );
       break;
