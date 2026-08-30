@@ -228,7 +228,14 @@ export default function Timeline() {
           Скорость
           <select
             className="pb-ctrl"
-            style={{ width: 64, height: 26, fontSize: 12 }}
+            style={{
+              width: 64,
+              height: 26,
+              fontSize: 12,
+              padding: "0 4px",
+              lineHeight: "24px",
+              textAlign: "center",
+            }}
             value={String(speed)}
             onChange={(e) => updateSettings({ playbackSpeed: Number(e.target.value) })}
             title="Скорость воспроизведения в редакторе (на экспорт не влияет)"
