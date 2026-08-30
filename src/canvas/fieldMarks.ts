@@ -27,7 +27,9 @@ export interface FieldMarks {
  *   длина 120 м = 100 м игровое поле + 2×10 м зачетные зоны; ширина 70 м.
  * Линии:
  *   - периметр (ауты + лицевые) — контур поля;
- *   - try-линии в 10 м от лицевых; 22-метровые в 22 м от try-линий; центральная — 50 м;
+ *   - try-линии в 10 м от лицевых; «22-метровые» схематично в 20 м от try-линий
+ *     (приведены к сетке 5 м — 22 не кратно квадрату и резало бы квадраты);
+ *     центральная — 50 м;
  *   - 5 м и 15 м от аутов на всю длину — самые тонкие (0.75);
  *   - ворота: схематичное «H» плашмя на try-линии, просвет 5 м, глубина 2.5 м.
  * Используется и в react-konva Field.tsx, и в offscreen-рендере экспорта GIF — единый источник.
@@ -80,10 +82,14 @@ export function getFieldMarks(): FieldMarks {
       // try-линии: начало зачетных зон (10 м от лицевых)
       { points: [tryLeft, 0, tryLeft, height], stroke: lineColor, strokeWidth: 2 },
       { points: [tryRight, 0, tryRight, height], stroke: lineColor, strokeWidth: 2 },
-      // 22-метровые
-      { points: [tryLeft + m(22), 0, tryLeft + m(22), height], stroke: lineColor, strokeWidth: 1 },
+      // «22-метровые»: схематично 20 м от try-линий (кратно сетке 5 м — не режут квадраты)
       {
-        points: [tryRight - m(22), 0, tryRight - m(22), height],
+        points: [tryLeft + m(20), 0, tryLeft + m(20), height],
+        stroke: lineColor,
+        strokeWidth: 1,
+      },
+      {
+        points: [tryRight - m(20), 0, tryRight - m(20), height],
         stroke: lineColor,
         strokeWidth: 1,
       },
