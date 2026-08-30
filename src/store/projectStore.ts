@@ -59,7 +59,7 @@ export function createPlayer(
     number: n,
     team,
     color: team === "blue" ? "#1e88e5" : "#e53935",
-    radius: 18,
+    radius: 12,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -70,11 +70,11 @@ export function createBall(x: number, y: number): BallData {
     kind: "ball",
     visible: true,
     zIndex: 2,
-    radius: 9,
+    radius: 6,
     color: "#f0e7d2",
     passes: [],
-    offsetX: 16,
-    offsetY: 17,
+    offsetX: 11,
+    offsetY: 11,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }

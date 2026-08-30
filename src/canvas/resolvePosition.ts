@@ -20,7 +20,7 @@ export function getPlayer(
 }
 
 /** Дефолтное смещение мяча относительно центра владельца (field units). */
-export const DEFAULT_BALL_OFFSET = { x: 16, y: 17 };
+export const DEFAULT_BALL_OFFSET = { x: 11, y: 11 };
 
 /** Дефолтная длительность полёта при передаче (сек), если на событии не задана. */
 export const DEFAULT_PASS_DURATION = 1;
@@ -201,5 +201,5 @@ export function nearestPlayer(
   return best;
 }
 
-/** Радиус захвата приёмника при передаче (field units). */
-export const PASS_REACH = 52;
+/** Радиус захвата приёмника при передаче (field units, ~2.9 радиуса игрока). */
+export const PASS_REACH = 35;
