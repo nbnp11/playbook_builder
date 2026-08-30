@@ -7,9 +7,12 @@ import { interpolate } from "./interpolator";
 import { usePlayback } from "./usePlayback";
 
 const LABEL_WIDTH = 150; // px, левая колонка с именем объекта
-const ROW_HEIGHT = 34; // px (стало просторнее)
+const ROW_HEIGHT = 30; // px
 const RULER_HEIGHT = 28; // px
 const TRANSPORT_HEIGHT = 50; // px
+/** Сколько строк объектов видно без скролла; дальше — внутренний скролл, чтобы не съедать поле. */
+const MAX_VISIBLE_ROWS = 5;
+const TRACKS_MAX_HEIGHT = ROW_HEIGHT * MAX_VISIBLE_ROWS; // px
 
 const tBtn: React.CSSProperties = {
   width: 34,
@@ -47,7 +50,10 @@ export default function Timeline() {
   const removeBallPass = useProjectStore((s) => s.removeBallPass);
   const interpolation = useProjectStore((s) => s.settings.interpolation ?? "linear");
   const step = useProjectStore((s) => s.settings.stepSec ?? 1);
+  const speed = useProjectStore((s) => s.settings.playbackSpeed ?? 1);
+  const updateSettings = useProjectStore((s) => s.updateSettings);
   const { isPlaying, toggle } = usePlayback();
+  const [collapsed, setCollapsed] = useState(false);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [trackWidth, setTrackWidth] = useState(800);
@@ -156,7 +162,6 @@ export default function Timeline() {
 
   return (
     <div
-      ref={trackRef}
       style={{
         width: "100%",
         background: "var(--panel)",
@@ -207,6 +212,43 @@ export default function Timeline() {
         <span style={{ fontSize: 10, color: "var(--text-faint)", letterSpacing: "0.06em" }}>
           шаг {step}s
         </span>
+        {/* Скорость воспроизведения: множитель к реальному времени (только в редакторе) */}
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 10,
+            color: "var(--text-faint)",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            marginLeft: 8,
+          }}
+        >
+          Скорость
+          <select
+            className="pb-ctrl"
+            style={{
+              width: 64,
+              height: 26,
+              fontSize: 12,
+              padding: "0 4px",
+              lineHeight: "24px",
+              textAlign: "center",
+            }}
+            value={String(speed)}
+            onChange={(e) => updateSettings({ playbackSpeed: Number(e.target.value) })}
+            title="Скорость воспроизведения в редакторе (на экспорт не влияет)"
+          >
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="0.75">0.75×</option>
+            <option value="1">1×</option>
+            <option value="1.5">1.5×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+          </select>
+        </label>
         <span
           style={{
             marginLeft: "auto",
@@ -217,190 +259,209 @@ export default function Timeline() {
         >
           кадр <b style={{ color: "var(--text)" }}>{currentStep}</b> / {totalSteps}
         </span>
+        <button
+          type="button"
+          style={{ ...tBtn, width: 28, height: 28, marginLeft: 8 }}
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? "Развернуть таймлайн" : "Свернуть таймлайн (освободить поле)"}
+        >
+          {collapsed ? "▴" : "▾"}
+        </button>
       </div>
 
-      {/* Линейка */}
-      <div style={{ display: "flex", height: RULER_HEIGHT, position: "relative" }}>
-        <div
-          style={{
-            width: LABEL_WIDTH,
-            borderRight: "1px solid var(--border)",
-            fontSize: 10,
-            color: "var(--text-faint)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 10px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-          }}
-        >
-          Объекты
-        </div>
-        {/* biome-ignore lint/a11y/noStaticElementInteractions: клик по линейке = перемотка */}
-        <div
-          style={{ position: "relative", flex: 1, cursor: "pointer" }}
-          onMouseDown={handleAreaScrub}
-        >
-          {ticks.map((s, i) => (
+      {/* Свернуто — оставляем только транспорт, чтобы не съедать поле */}
+      {!collapsed && (
+        <>
+          {/* Линейка */}
+          <div style={{ display: "flex", height: RULER_HEIGHT, position: "relative" }}>
             <div
-              key={`band-${s}`}
               style={{
-                position: "absolute",
-                left: secToX(s),
-                top: 0,
-                bottom: 0,
-                width: secToX(step),
-                background: i % 2 ? "rgba(255,255,255,0.035)" : "transparent",
-                pointerEvents: "none",
-              }}
-            />
-          ))}
-          {ticks.map((s) => (
-            <div
-              key={s}
-              style={{
-                position: "absolute",
-                left: secToX(s),
-                top: 0,
-                bottom: 0,
-                borderLeft: "1px solid var(--border)",
-                fontSize: 11,
-                fontFamily: "var(--mono)",
-                fontWeight: 700,
-                color: "var(--text-dim)",
-                paddingLeft: 5,
+                width: LABEL_WIDTH,
+                borderRight: "1px solid var(--border)",
+                fontSize: 10,
+                color: "var(--text-faint)",
                 display: "flex",
                 alignItems: "center",
+                padding: "0 10px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
               }}
             >
-              {s}s
+              Объекты
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Дорожки объектов */}
-      <div
-        style={{
-          position: "relative",
-          backgroundImage: `repeating-linear-gradient(90deg, var(--border-soft) 0, var(--border-soft) 1px, transparent 1px, transparent ${secToX(step)}px)`,
-          backgroundPosition: `${LABEL_WIDTH}px 0`,
-        }}
-      >
-        {/* Плейхед (тянется за кружок) */}
-        <div
-          style={{
-            position: "absolute",
-            left: LABEL_WIDTH + secToX(currentTime),
-            top: 0,
-            bottom: 0,
-            width: 2,
-            background: "var(--accent)",
-            pointerEvents: "none",
-            zIndex: 5,
-          }}
-        >
-          {/* biome-ignore lint/a11y/noStaticElementInteractions: кружок-плейхед — перетаскивание = перемотка */}
-          <div
-            style={{
-              position: "absolute",
-              top: -5,
-              left: -6,
-              width: 14,
-              height: 14,
-              background: "var(--accent)",
-              borderRadius: "50%",
-              boxShadow: "0 0 0 3px rgba(47,209,122,0.25)",
-              pointerEvents: "auto",
-              cursor: "ew-resize",
-            }}
-            onMouseDown={startPlayheadDrag}
-            title="Перетащите — перемотка"
-          />
-        </div>
-
-        {objects.map((obj) => {
-          const selected = selectedIds.includes(obj.id);
-          // Мяч: подпись текущего владельца + события-передачи вместо ключей позиции.
-          const isBallRow = obj.kind === "ball" && ball?.id === obj.id;
-          const label = isBallRow
-            ? ballCarrierNow
-              ? `Мяч → #${ballCarrierNow.number}`
-              : "Мяч (свободен)"
-            : objectLabel(obj);
-          return (
+            {/* biome-ignore lint/a11y/noStaticElementInteractions: клик по линейке = перемотка */}
             <div
-              key={obj.id}
+              style={{ position: "relative", flex: 1, cursor: "pointer" }}
+              onMouseDown={handleAreaScrub}
+            >
+              {ticks.map((s, i) => (
+                <div
+                  key={`band-${s}`}
+                  style={{
+                    position: "absolute",
+                    left: secToX(s),
+                    top: 0,
+                    bottom: 0,
+                    width: secToX(step),
+                    background: i % 2 ? "rgba(255,255,255,0.035)" : "transparent",
+                    pointerEvents: "none",
+                  }}
+                />
+              ))}
+              {ticks.map((s) => (
+                <div
+                  key={s}
+                  style={{
+                    position: "absolute",
+                    left: secToX(s),
+                    top: 0,
+                    bottom: 0,
+                    borderLeft: "1px solid var(--border)",
+                    fontSize: 11,
+                    fontFamily: "var(--mono)",
+                    fontWeight: 700,
+                    color: "var(--text-dim)",
+                    paddingLeft: 5,
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  {s}s
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Дорожки объектов — список скроллится, чтобы рост числа объектов не съедал поле */}
+          <div style={{ position: "relative", maxHeight: TRACKS_MAX_HEIGHT }}>
+            <div
+              ref={trackRef}
               style={{
-                display: "flex",
-                height: ROW_HEIGHT,
-                borderBottom: "1px solid var(--border-soft)",
-                background: selected ? "rgba(47,209,122,0.08)" : "transparent",
+                position: "relative",
+                maxHeight: TRACKS_MAX_HEIGHT,
+                overflowY: "auto",
+                scrollbarGutter: "stable",
+                backgroundImage: `repeating-linear-gradient(90deg, var(--border-soft) 0, var(--border-soft) 1px, transparent 1px, transparent ${secToX(step)}px)`,
+                backgroundPosition: `${LABEL_WIDTH}px 0`,
               }}
             >
-              <button
-                type="button"
-                onClick={(e) => select(obj.id, e.shiftKey)}
-                style={{
-                  width: LABEL_WIDTH,
-                  borderRight: "1px solid var(--border)",
-                  padding: "0 10px",
-                  display: "flex",
-                  alignItems: "center",
-                  fontSize: 12,
-                  fontWeight: selected ? 600 : 400,
-                  background: "transparent",
-                  border: "none",
-                  color: selected ? "var(--text)" : "var(--text-dim)",
-                  textAlign: "left",
-                  cursor: "pointer",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {label}
-              </button>
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: дорожка — клик=выделение+перемотка, дабл-клик=ключ */}
-              <div
-                style={{ position: "relative", flex: 1, cursor: "pointer" }}
-                onMouseDown={(e) => {
-                  select(obj.id, e.shiftKey);
-                  setCurrentTime(snapT(tFromClientX(e.clientX)));
-                }}
-                onDoubleClick={(e) => handleTrackDoubleClick(e, obj)}
-              >
-                {isBallRow && ball?.passes
-                  ? ball.passes.map((p) => (
-                      <PassMarker
-                        key={`pass-${p.time}`}
-                        left={secToX(p.time)}
-                        free={p.carrierId == null}
-                        onMouseDown={(e) => {
-                          startPassDrag(e, p.time);
-                          setCurrentTime(p.time);
-                        }}
-                        onDelete={() => removeBallPass(p.time)}
-                      />
-                    ))
-                  : obj.track.map((kf) => (
-                      <Marker
-                        key={kf.time}
-                        left={secToX(kf.time)}
-                        selected={selected}
-                        onMouseDown={(e) => {
-                          startMarkerDrag(e, obj.id, kf.time);
-                          setCurrentTime(kf.time);
-                        }}
-                        onDelete={() => removeKeyframe(obj.id, kf.time)}
-                        canDelete
-                      />
-                    ))}
-              </div>
+              {objects.map((obj) => {
+                const selected = selectedIds.includes(obj.id);
+                // Мяч: подпись текущего владельца + события-передачи вместо ключей позиции.
+                const isBallRow = obj.kind === "ball" && ball?.id === obj.id;
+                const label = isBallRow
+                  ? ballCarrierNow
+                    ? `Мяч → #${ballCarrierNow.number}`
+                    : "Мяч (свободен)"
+                  : objectLabel(obj);
+                return (
+                  <div
+                    key={obj.id}
+                    style={{
+                      display: "flex",
+                      height: ROW_HEIGHT,
+                      borderBottom: "1px solid var(--border-soft)",
+                      background: selected ? "rgba(47,209,122,0.08)" : "transparent",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(e) => select(obj.id, e.shiftKey)}
+                      style={{
+                        width: LABEL_WIDTH,
+                        borderRight: "1px solid var(--border)",
+                        padding: "0 10px",
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: 12,
+                        fontWeight: selected ? 600 : 400,
+                        background: "transparent",
+                        border: "none",
+                        color: selected ? "var(--text)" : "var(--text-dim)",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {label}
+                    </button>
+                    {/* biome-ignore lint/a11y/noStaticElementInteractions: дорожка — клик=выделение+перемотка, дабл-клик=ключ */}
+                    <div
+                      style={{ position: "relative", flex: 1, cursor: "pointer" }}
+                      onMouseDown={(e) => {
+                        select(obj.id, e.shiftKey);
+                        setCurrentTime(snapT(tFromClientX(e.clientX)));
+                      }}
+                      onDoubleClick={(e) => handleTrackDoubleClick(e, obj)}
+                    >
+                      {isBallRow && ball?.passes
+                        ? ball.passes.map((p) => (
+                            <PassMarker
+                              key={`pass-${p.time}`}
+                              left={secToX(p.time)}
+                              free={p.carrierId == null}
+                              onMouseDown={(e) => {
+                                startPassDrag(e, p.time);
+                                setCurrentTime(p.time);
+                              }}
+                              onDelete={() => removeBallPass(p.time)}
+                            />
+                          ))
+                        : obj.track.map((kf) => (
+                            <Marker
+                              key={kf.time}
+                              left={secToX(kf.time)}
+                              selected={selected}
+                              onMouseDown={(e) => {
+                                startMarkerDrag(e, obj.id, kf.time);
+                                setCurrentTime(kf.time);
+                              }}
+                              onDelete={() => removeKeyframe(obj.id, kf.time)}
+                              canDelete
+                            />
+                          ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+
+            {/* Плейхед (оверлей поверх скролл-области — не уезжает при вертикальном скролле) */}
+            <div
+              style={{
+                position: "absolute",
+                left: LABEL_WIDTH + secToX(currentTime),
+                top: 0,
+                bottom: 0,
+                width: 2,
+                background: "var(--accent)",
+                pointerEvents: "none",
+                zIndex: 5,
+              }}
+            >
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: кружок-плейхед — перетаскивание = перемотка */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: -5,
+                  left: -6,
+                  width: 14,
+                  height: 14,
+                  background: "var(--accent)",
+                  borderRadius: "50%",
+                  boxShadow: "0 0 0 3px rgba(47,209,122,0.25)",
+                  pointerEvents: "auto",
+                  cursor: "ew-resize",
+                }}
+                onMouseDown={startPlayheadDrag}
+                title="Перетащите — перемотка"
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

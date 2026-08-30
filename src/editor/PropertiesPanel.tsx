@@ -27,14 +27,18 @@ export default function PropertiesPanel() {
       <>
         <SideHead>Сцена</SideHead>
         <div style={{ padding: 14 }}>
-          <Field label="FPS">
+          <Field label="Скорость воспроизведения">
             <Select
-              value={String(settings.fps)}
-              onChange={(e) => updateSettings({ fps: Number(e.target.value) as 15 | 24 | 30 })}
+              value={String(settings.playbackSpeed ?? 1)}
+              onChange={(e) => updateSettings({ playbackSpeed: Number(e.target.value) })}
             >
-              <option value="15">15</option>
-              <option value="24">24</option>
-              <option value="30">30</option>
+              <option value="0.25">0.25× — очень медленно</option>
+              <option value="0.5">0.5× — медленно</option>
+              <option value="0.75">0.75×</option>
+              <option value="1">1× — обычно</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2× — быстро</option>
+              <option value="4">4× — очень быстро</option>
             </Select>
           </Field>
           <Field label="Размер GIF (по ширине)">

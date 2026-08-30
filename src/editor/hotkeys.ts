@@ -16,7 +16,7 @@ function isTyping(): boolean {
  *
  * Маппинг:
  *  - Space — play/pause
- *  - ←/→ — шаг плейхеда на 1/fps
+ *  - ←/→ — шаг плейхеда на один «кадр» таймлайна (settings.stepSec)
  *  - Delete/Backspace — удалить выделенное
  *  - Ctrl/Cmd+D — дублировать
  *  - Ctrl/Cmd+S — сохранить JSON (работает и при фокусе в инпуте)
@@ -70,12 +70,14 @@ export function useHotkeys(): void {
       }
       if (e.key === "ArrowLeft") {
         e.preventDefault();
-        s.setCurrentTime(Math.max(0, s.currentTime - 1 / s.settings.fps));
+        const step = s.settings.stepSec ?? 1;
+        s.setCurrentTime(Math.max(0, s.currentTime - step));
         return;
       }
       if (e.key === "ArrowRight") {
         e.preventDefault();
-        s.setCurrentTime(Math.min(s.settings.durationSec, s.currentTime + 1 / s.settings.fps));
+        const step = s.settings.stepSec ?? 1;
+        s.setCurrentTime(Math.min(s.settings.durationSec, s.currentTime + step));
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {

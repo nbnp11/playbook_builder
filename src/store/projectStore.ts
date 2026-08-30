@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS: ProjectSettings = {
   fps: 24,
   size: 1080,
   durationSec: 10,
+  playbackSpeed: 1,
   interpolation: "linear",
   stepSec: 1,
 };
@@ -58,7 +59,7 @@ export function createPlayer(
     number: n,
     team,
     color: team === "blue" ? "#1e88e5" : "#e53935",
-    radius: 18,
+    radius: 12,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -69,11 +70,11 @@ export function createBall(x: number, y: number): BallData {
     kind: "ball",
     visible: true,
     zIndex: 2,
-    radius: 9,
+    radius: 6,
     color: "#f0e7d2",
     passes: [],
-    offsetX: 16,
-    offsetY: 17,
+    offsetX: 11,
+    offsetY: 11,
     track: [{ time: 0, x, y, rotation: 0 }],
   };
 }
@@ -158,6 +159,8 @@ interface ProjectState {
   removeObject: (id: string) => void;
   removeSelected: () => void;
   duplicateSelected: () => void;
+  /** Удалить все объекты со сцены (отменяемо через undo). */
+  clearAll: () => void;
   reorderObject: (id: string, direction: "up" | "down") => void;
   updateObject: (id: string, patch: ObjectPatch) => void;
   setKeyframe: (id: string, kf: Keyframe) => void;
@@ -265,6 +268,15 @@ export const useProjectStore = create<ProjectState>()(
             .filter((o): o is ObjectData => Boolean(o))
             .map((src, i) => cloneObject(src, maxZ + 1 + i));
           return { objects: [...s.objects, ...clones], selectedIds: clones.map((c) => c.id) };
+        }),
+
+      clearAll: () =>
+        set({
+          objects: [],
+          selectedIds: [],
+          receiverId: null,
+          isPlaying: false,
+          currentTime: 0,
         }),
 
       reorderObject: (id, direction) =>
@@ -380,7 +392,7 @@ export const useProjectStore = create<ProjectState>()(
       setReceiver: (id) => set({ receiverId: id }),
       loadProject: (p) =>
         set({
-          settings: { interpolation: "linear", ...p.settings },
+          settings: { interpolation: "linear", playbackSpeed: 1, ...p.settings },
           objects: p.objects.map(withSortedTrack),
           selectedIds: [],
           currentTime: 0,

@@ -23,6 +23,7 @@ export default function Toolbar() {
   const addObject = useProjectStore((s) => s.addObject);
   const removeSelected = useProjectStore((s) => s.removeSelected);
   const duplicateSelected = useProjectStore((s) => s.duplicateSelected);
+  const clearAll = useProjectStore((s) => s.clearAll);
   const snapEnabled = useProjectStore((s) => s.snapEnabled);
   const toggleSnap = useProjectStore((s) => s.toggleSnap);
   const settings = useProjectStore((s) => s.settings);
@@ -111,6 +112,18 @@ export default function Toolbar() {
           title="Удалить (Delete)"
         >
           Удалить
+        </Button>
+        <Button
+          variant="danger"
+          onClick={() => {
+            if (objects.length === 0) return;
+            if (window.confirm(`Удалить все объекты (${objects.length})? Отменить можно Ctrl+Z.`))
+              clearAll();
+          }}
+          disabled={objects.length === 0}
+          title="Удалить все объекты со сцены (отменяемо через Ctrl+Z)"
+        >
+          Очистить всё
         </Button>
         <Button
           variant={snapEnabled ? "active" : "default"}

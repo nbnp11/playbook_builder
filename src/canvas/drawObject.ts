@@ -65,7 +65,7 @@ export function drawObjectInto(
       if (flags?.carrier) {
         group.add(
           new Konva.Circle({
-            radius: radius + 7,
+            radius: radius + 5,
             stroke: "#2fd17a",
             strokeWidth: 2,
             dash: [5, 4],
@@ -76,7 +76,7 @@ export function drawObjectInto(
       if (flags?.receiver) {
         group.add(
           new Konva.Circle({
-            radius: radius + 7,
+            radius: radius + 5,
             stroke: "#1e88e5",
             strokeWidth: 2.5,
             listening: false,
@@ -87,9 +87,15 @@ export function drawObjectInto(
     }
     case "ball": {
       // Регбийный мяч: овал (rx>ry) с тёмным кантом, бликом и швом-перемычкой.
+      // Первым — невидимый хит-круг ×2 радиуса: сам овал мелкий, сложно попасть мышью
+      // (transparent fill в Konva ловит события, но ничего не рисует и в GIF не попадает).
       const ry = obj.radius;
       const rx = obj.radius * 1.6;
       group.add(
+        new Konva.Circle({
+          radius: obj.radius * 2,
+          fill: "transparent",
+        }),
         new Konva.Ellipse({
           radiusX: rx,
           radiusY: ry,
@@ -140,7 +146,9 @@ export function drawObjectInto(
       break;
     }
     case "text": {
-      // грубая оценка ширины для центрирования
+      // грубая оценка ширины для центрирования.
+      // listening не выключаем: текст — единственный шейп группы, без него объект
+      // не ловил бы события мыши (нельзя выделить/перетащить).
       const approxWidth = Math.max(obj.fontSize * obj.text.length * 0.6, obj.fontSize);
       group.add(
         new Konva.Text({
@@ -154,7 +162,6 @@ export function drawObjectInto(
           height: obj.fontSize * 1.3,
           x: -approxWidth / 2,
           y: (-obj.fontSize * 1.3) / 2,
-          listening: false,
         }),
       );
       break;
